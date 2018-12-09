@@ -22,6 +22,9 @@ int main(int argc, char** argv){
     srand(time(0));
     SDL_Init(SDL_INIT_VIDEO);
     SDL_Window* window = SDL_CreateWindow("OpenGL", 100, 100, WIDTH, HEIGHT, SDL_WINDOW_OPENGL);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
     SDL_GLContext context = SDL_GL_CreateContext(window);
 
     char* vertexData = readFileToCharArray("vertex_shader.glsl");
@@ -31,10 +34,12 @@ int main(int argc, char** argv){
     glUseProgram(shader);
     int postionId = glGetAttribLocation(shader, "position");
     int texCoordId = glGetAttribLocation(shader, "texCoord");
+    int normalId = glGetAttribLocation(shader, "normal");
 
     int modelMatId = glGetUniformLocation(shader, "modelMatrix");
     int projectionMatId = glGetUniformLocation(shader, "projectionMatrix");
     int viewMatId = glGetUniformLocation(shader, "viewMatrix");
+    int lightPosId = glGetUniformLocation(shader, "lightPos");
 
 
     Camera camera;
@@ -51,52 +56,54 @@ int main(int argc, char** argv){
     viewMatrix.translate(camera.position);
     glUniformMatrix4fv(viewMatId, 1, false, viewMatrix.m[0]);
 
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK);
-    glFrontFace(GL_CW);
-
     float verts[] = {
-        1, -1, -1, 0, 0, 
-        1,  1, -1, 0, 1,
-       -1,  1, -1, 1, 1,
-       -1,  1, -1, 1, 1,
-       -1, -1, -1, 1, 0,
-        1, -1, -1, 0, 0,
+        //front
+        -1, -1, 1,  0, 1,  0, 0, -1,
+        -1,  1, 1,   0, 0, 0, 0, -1,
+         1,  1, 1,   1, 0, 0, 0, -1,
+         1,  1, 1,   1, 0, 0, 0, -1,
+         1, -1, 1,  1, 1, 0, 0, -1,
+        -1, -1, 1,  0, 1, 0, 0, -1,
 
-        -1, -1, -1, 0, 0, 
-        -1, 1, -1, 0, 1,
-        -1, 1, 1, 1, 1,
-        -1, 1, 1, 1, 1,
-        -1, -1, 1, 1, 0,
-        -1, -1, -1, 0, 0,
-        
-        -1, -1, 1, 0, 0, 
-        -1,1, 1, 0, 1,
-        1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1,
-        1,  -1, 1, 1, 0,
-        -1, -1, 1, 0, 0,
+        //back
+        -1, 1, -1,  0, 1,   0, 0, 1,
+        -1,  -1, -1,   0, 0,  0, 0, 1,
+        1,   -1, -1,   1, 0, 0, 0, 1,
+        1,   -1, -1,   1, 0, 0, 0, 1,
+        1,  1, -1,  1, 1, 0, 0, 1,
+        -1, 1, -1,  0, 1, 0, 0, 1,
 
-        1, -1, -1, 0, 0, 
-        1, 1, -1, 0, 1,
-        1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1,
-        1, -1, 1, 1, 0,
-        1, -1, -1, 0, 0, 
+        //left
+        -1, -1, -1, 0, 1, -1, 0, 0,
+        -1, 1, -1, 0, 0,    -1, 0, 0,
+        -1, 1, 1, 1, 0, -1, 0, 0,
+        -1, 1, 1, 1, 0, -1, 0, 0,
+        -1, -1, 1, 1, 1, -1, 0, 0,
+        -1, -1, -1, 0, 1,  -1, 0, 0,
 
-        -1, 1, -1, 0, 1,
-        -1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1,
-        1, 1, 1, 1, 0,
-        1, 1, -1, 0, 0,
-        -1, 1, -1, 0, 0, 
+        //right
+        1, 1, -1, 0, 1,  1, 0, 0,
+        1, -1, -1, 0, 0,  1, 0, 0,
+        1, -1, 1, 1, 0, 1, 0, 0,
+        1, -1, 1, 1, 0, 1, 0, 0,
+        1, 1, 1, 1, 1, 1, 0, 0,
+        1, 1, -1, 0, 1,  1, 0, 0,
 
-        1, -1, -1, 0, 1,
-        1, -1, 1, 1, 1,
-        -1, -1, 1, 1, 1,
-        -1, -1, 1, 1, 0,
-        -1, -1, -1, 0, 0,
-        1, -1, -1, 0, 0,
+        //top
+        1, 1, -1, 0, 1, 0, 1, 0,
+        1, 1, 1, 0, 0,  0, 1, 0,
+        -1, 1, 1, 1, 0, 0, 1, 0,
+        -1, 1, 1, 1, 0, 0, 1, 0,
+        -1, 1, -1, 1, 1, 0, 1, 0,
+        1, 1, -1, -0, 1, 0, 1, 0,
+
+        //bottom
+        -1, -1, -1, 0, 1, 0, -1, 0,
+        -1, -1, 1, 0, 0,  0, -1, 0,
+        1,  -1, 1, 1, 0, 0, -1, 0,
+        1,  -1, 1, 1, 0, 0, -1, 0,
+        1,  -1, -1, 1, 1, 0, -1, 0,
+        -1, -1, -1, -0, 1, 0, -1, 0,
     };
 
     unsigned int vao, vbo;
@@ -106,10 +113,12 @@ int main(int argc, char** argv){
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(postionId, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), 0);
+    glVertexAttribPointer(postionId, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), 0);
     glEnableVertexAttribArray(postionId);
-    glVertexAttribPointer(texCoordId, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    glVertexAttribPointer(texCoordId, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(texCoordId);
+    glVertexAttribPointer(normalId, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(5 * sizeof(float)));
+    glEnableVertexAttribArray(normalId);
 
     unsigned char texture[] = {
         255,255,255,255,0,0,0,255,
@@ -127,6 +136,9 @@ int main(int argc, char** argv){
 
     glClearColor(0, 0.5, 1, 1);
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
+    glFrontFace(GL_CW);
+    glCullFace(GL_BACK);
 
     mat4 modelMatrix;
     modelMatrix.setIdentity();
@@ -151,8 +163,8 @@ int main(int argc, char** argv){
     bool yawLeft = false;
     bool yawRight = false;
 
-    float camMoveSpeed = 0.1;
-    float camRotateSpeed = 0.01;
+    float camMoveSpeed = 0.01;
+    float camRotateSpeed = 0.001;
 
     while(isRunning){
         while(SDL_PollEvent(&event)){
@@ -244,12 +256,12 @@ int main(int argc, char** argv){
         camera.position += vec3(camera.right.x * camMoveSpeed * moveLeft,
                                 camera.right.y * camMoveSpeed * moveLeft,
                                 camera.right.z * camMoveSpeed * moveLeft);
-        
-        camera.position += vec3(camera.up.x * camMoveSpeed * moveUp,
+
+        camera.position -= vec3(camera.up.x * camMoveSpeed * moveUp,
                                 camera.up.y * camMoveSpeed * moveUp,
                                 camera.up.z * camMoveSpeed * moveUp);
-
-        camera.position -= vec3(camera.up.x * camMoveSpeed * moveDown,
+            
+        camera.position += vec3(camera.up.x * camMoveSpeed * moveDown,
                                 camera.up.y * camMoveSpeed * moveDown,
                                 camera.up.z * camMoveSpeed * moveDown);
 
